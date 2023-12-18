@@ -1,0 +1,45 @@
+#include <SPI.h>
+#include <LoRa.h>
+
+#define ss 5
+#define rst 14
+#define dio0 2
+#define BAND 433E6  // Adjust the frequency band as needed
+int counter = 0;
+
+void setup() {
+  Serial.begin(9600);
+  startLoRa();
+  Serial.println("LoRa, GPS, and LED Initialization OK!");
+}
+
+void loop() {
+  receivedData();  
+}
+
+void startLoRa() {
+  LoRa.setPins(ss, rst, dio0);
+  while (!LoRa.begin(BAND) && counter < 10) {
+    Serial.print(".");
+    counter++;
+    delay(500);
+  }
+  if (counter == 10) {
+    Serial.println("Starting LoRa failed!");
+  } else {
+    Serial.println("LoRa Initialization OK!");
+  }
+  delay(800);
+}
+
+void receivedData() {  
+    int packetSize = LoRa.parsePacket();
+    if (packetSize) {
+      String receivedMessage = "";
+      while (LoRa.available()) {
+        receivedMessage += (char)LoRa.read();
+      }
+      Serial.println("Received Data: " + receivedMessage);
+      return;  
+  }
+}
