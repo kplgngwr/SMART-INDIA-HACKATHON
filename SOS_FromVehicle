@@ -1,0 +1,114 @@
+#include <SPI.h>
+#include <LoRa.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define ss 5
+#define rst 14
+#define dio0 2
+#define BAND 433E6        // Adjust the frequency band as needed
+#define SCREEN_WIDTH 128  // OLED display width, in pixels
+#define SCREEN_HEIGHT 64  // OLED display height, in pixels
+
+int counter = 0;
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+void setup() {
+  Serial.begin(9600);
+  startLoRa();
+  pinMode(32, OUTPUT);
+  pinMode(33, OUTPUT);
+  pinMode(13, INPUT);
+  Serial.println("LoRa, GPS, and LED Initialization OK!");
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {  // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ;
+  }
+  delay(2000);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10, 1);
+  display.println("Vehicle: UPXY0002");  // Display static text
+  display.display();
+}
+
+void startLoRa() {
+  LoRa.setPins(ss, rst, dio0);
+  while (!LoRa.begin(BAND) && counter < 10) {
+    Serial.print(".");
+    counter++;
+    delay(500);
+  }
+  if (counter == 10) {
+    Serial.println("Starting LoRa failed!");
+  } else {
+    Serial.println("LoRa Initialization OK!");
+  }
+  delay(800);
+}
+
+void sendData(int x) {
+  String ID = "UP22XY0002";
+  String message = String(ID) + "," + String("0") + "," + String("0") + "," + String("0") + "," + String(x);
+  Serial.println(message);
+  LoRa.beginPacket();
+  LoRa.print(message);
+  LoRa.endPacket();
+}
+
+void receivedData() {
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+    String receivedMessage = "";
+    while (LoRa.available()) {
+      receivedMessage += (char)LoRa.read();
+    }
+    Serial.println(receivedMessage);
+
+    if (receivedMessage.indexOf("UP22XY0001outside") != -1) {
+      blinkLED(33);
+    }
+    return;
+  }
+}
+
+
+void loop() {
+  receivedData();
+  if (digitalRead(13) == HIGH) {
+    delay(20);
+    {
+      if (digitalRead(13) == LOW ) {
+        sendData(00);
+        oLed("SOS Sent", 19, 200);
+        oLed("Wait 2 Sec,send Again", 29, 1800);
+        display.fillRect(1, 19, SCREEN_WIDTH, 8, BLACK);
+        display.fillRect(1, 29, SCREEN_WIDTH, 8, BLACK);
+        display.display();   //implementing black color
+      }
+    }
+  } else {
+    unsigned long Time = millis();  // Record the start time
+    while (millis() - Time < 300) {
+      sendData(01);
+      delay(1000);
+    }
+  }
+}
+
+void oLed(String message, int yPos, int n) {
+  display.setCursor(1, yPos);
+  display.print(message);
+  display.display();
+  delay(n);
+}
+
+void blinkLED(int pin) {
+  digitalWrite(pin, HIGH);
+  delay(200);
+  digitalWrite(pin, LOW);
+}
