@@ -1,20 +1,40 @@
 #include <SPI.h>
 #include <LoRa.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #define ss 5
 #define rst 14
 #define dio0 2
-#define BAND 433E6  // Adjust the frequency band as needed
+#define BAND 433E6        // Adjust the frequency band as needed
+#define SCREEN_WIDTH 128  // OLED display width, in pixels
+#define SCREEN_HEIGHT 64  // OLED display height, in pixels
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 int counter = 0;
 
 void setup() {
   Serial.begin(9600);
+  pinMode(25, OUTPUT);
+  pinMode(33, OUTPUT);
   startLoRa();
-  Serial.println("LoRa, GPS, and LED Initialization OK!");
+  Serial.println("LoRa Initialization OK!");
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {  // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ;
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  display.println("*** CONTROL UNIT ***");
+  display.display();
 }
 
 void loop() {
-  receivedData();  
+  receivedData();
 }
 
 void startLoRa() {
@@ -32,14 +52,35 @@ void startLoRa() {
   delay(800);
 }
 
-void receivedData() {  
-    int packetSize = LoRa.parsePacket();
-    if (packetSize) {
-      String receivedMessage = "";
-      while (LoRa.available()) {
-        receivedMessage += (char)LoRa.read();
-      }
-      Serial.println("Received Data: " + receivedMessage);
-      return;  
+void receivedData() {
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+    String receivedMessage = "";
+    while (LoRa.available()) {
+      receivedMessage += (char)LoRa.read();
+    }
+    Serial.println("Received Data: " + receivedMessage);
+
+    if (receivedMessage.indexOf("UP22XY0001,") != -1) {
+      blinkLED(25);
+    }
+    if (receivedMessage.indexOf("UP22XY0002,") != -1) {
+      blinkLED(33);
+    }
+    return;
   }
+}
+
+void blinkLED(int pin) {
+  digitalWrite(pin, HIGH);
+  delay(200);
+  digitalWrite(pin, LOW);
+}
+
+void printMessage(String message, int yPos, int n) {
+  display.setCursor(10, yPos);
+  display.print(message);
+  display.display();
+  delay(n);
+  display.fillRect(10, yPos, SCREEN_WIDTH, 8, BLACK);
 }
