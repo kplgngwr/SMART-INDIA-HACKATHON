@@ -17,6 +17,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(25, OUTPUT);
   pinMode(33, OUTPUT);
+  pinMode(26, OUTPUT);
   startLoRa();
   Serial.println("LoRa Initialization OK!");
 
@@ -63,10 +64,19 @@ void receivedData() {
 
     if (receivedMessage.indexOf("UP22XY0001,") != -1) {
       blinkLED(25);
+      oLed("UPXY0001: OK", 25, 200);
     }
-    if (receivedMessage.indexOf("UP22XY0002,") != -1) {
+    if (receivedMessage.indexOf("UP22XY0002,0,0,0,0") != -1) {
       blinkLED(33);
+      oLed("UPXY0002: OK", 33, 200);
     }
+    if (receivedMessage == "UP22XY0002,0,0,0,1") {
+      blinkLED(26);
+      oLed("UPXY0002: Alert", 35, 200);
+    }
+    display.fillRect(1, 25, SCREEN_WIDTH, 8, BLACK);
+    display.fillRect(1, 35, SCREEN_WIDTH, 8, BLACK);
+    display.fillRect(1, 35, SCREEN_WIDTH, 8, BLACK);
     return;
   }
 }
@@ -77,10 +87,9 @@ void blinkLED(int pin) {
   digitalWrite(pin, LOW);
 }
 
-void printMessage(String message, int yPos, int n) {
-  display.setCursor(10, yPos);
+void oLed(String message, int yPos, int n) {
+  display.setCursor(1, yPos);
   display.print(message);
   display.display();
   delay(n);
-  display.fillRect(10, yPos, SCREEN_WIDTH, 8, BLACK);
 }
