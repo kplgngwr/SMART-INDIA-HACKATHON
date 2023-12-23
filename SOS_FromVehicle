@@ -19,6 +19,7 @@ void setup() {
   startLoRa();
   pinMode(32, OUTPUT);
   pinMode(33, OUTPUT);
+  pinMode(25,OUTPUT);
   pinMode(13, INPUT);
   Serial.println("LoRa, GPS, and LED Initialization OK!");
 
@@ -60,51 +61,50 @@ void sendData(int x) {
   LoRa.endPacket();
 }
 
-void receivedData() {
-  int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    String receivedMessage = "";
-    while (LoRa.available()) {
-      receivedMessage += (char)LoRa.read();
-    }
-    Serial.println(receivedMessage);
-
-    if (receivedMessage.indexOf("UP22XY0001outside") != -1) {
-      blinkLED(33);
-    }
-    return;
-  }
-}
-
-
 void loop() {
   receivedData();
   if (digitalRead(13) == HIGH) {
-    delay(20);
-    {
-      if (digitalRead(13) == LOW ) {
-        sendData(00);
-        oLed("SOS Sent", 19, 200);
-        oLed("Wait 2 Sec,send Again", 29, 1800);
-        display.fillRect(1, 19, SCREEN_WIDTH, 8, BLACK);
-        display.fillRect(1, 29, SCREEN_WIDTH, 8, BLACK);
-        display.display();   //implementing black color
-      }
-    }
+    sendData(01);
+    oLed("SOS Sent", 19, 200);
+    oLed("sending Every 2 sec", 29, 800);
+    display.fillRect(0, 19, SCREEN_WIDTH, 8, BLACK);
+    display.display();  //implementing black color
+
   } else {
     unsigned long Time = millis();  // Record the start time
     while (millis() - Time < 300) {
-      sendData(01);
-      delay(1000);
+      sendData(00);
+      display.fillRect(0, 29, SCREEN_WIDTH, 8, BLACK);
+      display.display();  //implementing black color
+      delay(200);
     }
   }
 }
 
-void oLed(String message, int yPos, int n) {
-  display.setCursor(1, yPos);
+void receivedData() {
+  unsigned long startTime = millis();    // Record the start time
+  while (millis() - startTime < 1000) {  // Check for received messages for 1 second
+    int packetSize = LoRa.parsePacket();
+    if (packetSize) {
+      String receivedMessage = "";
+      while (LoRa.available()) {
+        receivedMessage += (char)LoRa.read();
+      }
+      Serial.println(receivedMessage);
+
+      if (receivedMessage.indexOf("UP22XY0001,") != -1) {
+        blinkLED(25);
+      }
+      return;
+    }
+  }
+}
+
+void oLed(String message, int yPos, int del) {
+  display.setCursor(0, yPos);
   display.print(message);
   display.display();
-  delay(n);
+  delay(del);
 }
 
 void blinkLED(int pin) {
