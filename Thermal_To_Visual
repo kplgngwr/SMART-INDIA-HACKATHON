@@ -1,0 +1,26 @@
+import cv2
+
+def display_enhanced_bw_image(input_image_path):
+    # Read the thermal image
+    thermal_image = cv2.imread(input_image_path, cv2.IMREAD_GRAYSCALE)
+
+    if thermal_image is None:
+        print("Error: Could not read the image.")
+        return
+
+    # Adjust contrast and brightness
+    alpha = 1.1  # Contrast control (1.0 means no change)
+    beta = 27    # Brightness control
+
+    enhanced_image = cv2.convertScaleAbs(thermal_image, alpha=alpha, beta=beta)
+
+    # Display the enhanced black and white image
+    cv2.imshow("Enhanced Black and White Image", enhanced_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    # Replace with the path to your thermal image
+    input_path = r"C:\Users\Nitish Maurya\Downloads\thermal\WhatsApp Image 2023-12-21 at 6.00.58 PM.jpeg"
+
+    display_enhanced_bw_image(input_path)
