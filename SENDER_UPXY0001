@@ -5,6 +5,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include <HardwareSerial.h>
 
 #define ss 5
 #define rst 14
@@ -104,7 +105,7 @@ void setup() {
 
 void loop() {
   sendData();
-  delay(1000);
+  receivedData();
 }
 
 void startLoRa() {
@@ -123,8 +124,20 @@ void startLoRa() {
 }
 
 void sendData() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  String packet2;
   String ID = "UP22XY0001";
-  String packet2 = data();
+
+  if (-30 > (g.gyro.x * (180.0 / PI) > 50 || -30 > (g.gyro.y * (180.0 / PI) > 50))) {
+    for (int i = 1; i < 4; i++) {
+      packet2 = data(1);
+      delay(100);
+    }
+  } else {
+    packet2 = data(0);
+  }
+
   String message = String(ID) + "," + String(packet2);
   Serial.println(message);
 
@@ -133,14 +146,43 @@ void sendData() {
   LoRa.endPacket();
 }
 
-String data() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
+String data(int x) {
   while (sim808.getGPS()) {
     if (sim808.getGPS()) {
-      String data2 = String((sim808.GPSdata.lat), 6) + "," + String((sim808.GPSdata.lon), 6) + "," + String(sim808.GPSdata.speed_kph) + "," + String(g.gyro.x * (180.0 / PI)) + "," + String(g.gyro.y * (180.0 / PI)) + "," + String(temp.temperature);
+      String data2 = String((sim808.GPSdata.lat), 6) + "," + String((sim808.GPSdata.lon), 6) + "," + String(sim808.GPSdata.speed_kph) + "," + String(x);
       return data2;
       sim808.detachGPS();
     }
   }
+}
+
+void receivedData() {
+  unsigned long startTime = millis();    // Record the start time
+  while (millis() - startTime < 1000) {  // Check for received messages for 1 second
+    int packetSize = LoRa.parsePacket();
+    if (packetSize) {
+      String receivedMessage = "";
+      while (LoRa.available()) {
+        receivedMessage += (char)LoRa.read();
+      }
+      Serial.println(receivedMessage);
+
+      if (receivedMessage == "UP22XY0002,0,0,0,1") {
+        Serial.println("Calling");
+        makeCall("+916376659237");
+      }
+      return;
+    }
+  }
+}
+
+void makeCall(const char* phoneNumber) {
+  sim808Serial.print("ATD"); // ATD command for dialing
+  sim808Serial.print(phoneNumber);
+  sim808Serial.println(";"); // Semicolon to indicate the end of the phone number
+
+  delay(10000); // Wait for 10 seconds (adjust as needed)
+
+  // Hang up the call
+  sim808Serial.println("ATH");
 }
